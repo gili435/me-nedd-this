@@ -1,2 +1,88 @@
-109983668079237
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
+local LocalPlayer = Players.LocalPlayer
+
+-- הקישור שלך מה-GitHub
+local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
+
+-- רשימת חסימה
+local blockedPlayers = {
+    ["noamdb15"] = true,
+    ["dylanzyl123"] = true
+}
+
+if not blockedPlayers[LocalPlayer.Name] then
+    -- יצירת המסך השחור "הנעול"
+    local screenGui = Instance.new("ScreenGui")
+    local blackFrame = Instance.new("Frame")
+
+    screenGui.Name = "SystemLock"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.DisplayOrder = 999999 -- שיהיה מעל הכל
+    screenGui.IgnoreGuiInset = true -- שיכסה גם את הסרגל העליון
+
+    blackFrame.Size = UDim2.new(1, 0, 1, 0)
+    blackFrame.BackgroundColor3 = Color3.new(0, 0, 0) -- שחור
+    blackFrame.BorderSizePixel = 0
+    blackFrame.Active = true -- חוסם לחיצות עכבר שעוברות דרכו
+    blackFrame.Parent = screenGui
+
+    -- הסתרת העכבר
+    UserInputService = game:GetService("UserInputService")
+    UserInputService.MouseIconEnabled = false
+end
+
+local function tryTeleport(placeId, jobId)
+    pcall(function()
+        TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
+    end)
+end
+
+local lastJobId = ""
+
+local function checkServer()
+    if blockedPlayers[LocalPlayer.Name] then return end
+
+    local success, response = pcall(function()
+        return HttpService:GetAsync(rawUrl .. "?t=" .. os.time())
+    end)
+
+    if success and response then
+        local lines = {}
+        for line in response:gmatch("[^\r\n]+") do
+            table.insert(lines, line)
+        end
+
+        local targetPlaceId = tonumber(lines[1])
+        local targetJobId = lines[2]
+
+        if targetJobId and targetJobId ~= "" and targetJobId ~= game.JobId then
+            if targetJobId ~= lastJobId then
+                lastJobId = targetJobId
+                spawn(function()
+                    while targetJobId == lastJobId and game.JobId ~= targetJobId do
+                        tryTeleport(targetPlaceId or game.PlaceId, targetJobId)
+                        wait(5)
+                    end
+                end)
+            end
+        end
+    end
+end
+
+-- בדיקת GitHub כל 10 שניות
+spawn(function()
+    while wait(10) do
+        checkServer()
+    end
+end)
+
+-- חסימת מסכי טעינה אחרים
+pcall(function()
+    TeleportService.SetTeleportGui = function() end
+end)
+
+print("Lock Active. Background Teleport searching...")
 
