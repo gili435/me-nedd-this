@@ -1,2 +1,101 @@
-109983668079237
-0d15378e-a029-49dc-aeeb-28b54e1ef19b
+--[[
+	DESYNC SCRIPT — Deobfuscated from LuaObfuscator.com (Alpha 0.10.9)
+	FEATURES:
+	  1. Packet-level desync: hooks raknet send, modifies outbound timestamp
+	     packets (PacketId 0x1B) to corrupt the timestamp field, causing
+	     server-side position desync.
+	  2. "Unwalk" mode: stops all playing animation tracks every frame
+	     (makes your character appear frozen/T-posed to others).
+	  3. Draggable GUI in CoreGui with activate/deactivate + unwalk toggle.
+	  4. Settings saved/loaded to SkibidiDesync_settings.json via writefile/readfile.
+	
+	CONTROLS:
+	  U (default, rebindable) = toggle desync on/off
+	  GUI buttons for desync + unwalk toggle
+]]
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local desyncEnabled = false
+local guiMinimized = false
+local HOTKEY = Enum.KeyCode.U
+
+-- GUI positions (saved/loaded)
+local miniPosition = UDim2.new(0, 70, 0, 60)
+local windowPosition = UDim2.new(0.5, -120, 0.5, -100)
+
+local SETTINGS_FILE = "SkibidiDesync_settings.json"
+
+-- ============================================================
+--  SETTINGS: Save
+-- ============================================================
+local function saveSettings()
+	local data = {
+		hotkey = HOTKEY.Name,
+		winX = windowPosition.X.Offset,
+		winY = windowPosition.Y.Offset,
+		winXS = windowPosition.X.Scale,
+		winYS = windowPosition.Y.Scale,
+		miniX = miniPosition.X.Offset,
+		miniY = miniPosition.Y.Offset,
+		miniXS = miniPosition.X.Scale,
+		miniYS = miniPosition.Y.Scale,
+	}
+	local ok, json = pcall(function()
+		local parts = {}
+		for key, value in pairs(data) do
+			local valStr = (type(value) == "string" and ('"' .. value .. '"')) or tostring(value)
+			table.insert(parts, '"' .. key .. '":' .. valStr)
+		end
+		return "{" .. table.concat(parts, ",") .. "}"
+	end)
+	if ok then
+		pcall(writefile, SETTINGS_FILE, json)
+	end
+end
+
+-- ============================================================
+--  SETTINGS: Load
+-- ============================================================
+local function loadSettings()
+	local ok, content = pcall(readfile, SETTINGS_FILE)
+	if not ok or not content or content == "" then
+		return
+	end
+
+	pcall(function()
+		local function parseValue(str)
+			str = str:match("^%s*(.-)%s*$")
+			if str:sub(1, 1) == '"' then
+				return str:sub(2, -2)
+			end
+			return tonumber(str)
+		end
+
+		for key, rawVal in content:gmatch('"([^"]+)"%s*:%s*("?[^",}]+"?)') do
+			local val = parseValue(rawVal)
+
+			if key == "hotkey" and type(val) == "string" then
+				local keyCode = Enum.KeyCode[val]
+				if keyCode then
+					HOTKEY = keyCode
+				end
+			elseif key == "winX" then
+				windowPosition = UDim2.new(windowPosition.X.Scale, val, windowPosition.Y.Scale, windowPosition.Y.Offset)
+			elseif key == "winY" then
+				windowPosition = UDim2.new(windowPosition.X.Scale, windowPosition.X.Offset, windowPosition.Y.Scale, val)
+			elseif key == "winXS" then
+				windowPosition = UDim2.new(val, windowPosition.X.Offset, windowPosition.Y.Scale, windowPosition.Y.Offset)
+			elseif key == "winYS" then
+				windowPosition = UDim2.new(windowPosition.X.Scale, windowPosition.X.Offset, val, windowPosition.Y.Offset)
+			elseif key == "miniX" then
+				miniPosition = UDim2.new(miniPosition.X.Scale, val, miniPosition.Y.Scale, miniPosition.Y.Offset)
+			elseif key == "miniY" then
+				miniPosition = UDim2.new(miniPosition.X.Scale, miniPosition.X.Offset, miniPosition.Y.Scale, val)
+			elseif key == "miniXS" then
+... (313 lines left)
